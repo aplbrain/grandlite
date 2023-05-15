@@ -1,24 +1,63 @@
 import argparse
 import pathlib
 import sys
+import tempfile
 
 import networkx as nx
 import pandas as pd
+import requests
 from grandcypher import GrandCypher
 from prompt_toolkit import prompt
 
 
+def _infer_graph_filetype_from_contents(filename):
+    # If XML, assume GraphML
+    # If JSON, assume JSON Graph
+
+    first_100_chars = open(filename).read(100)
+    if "<graphml" in first_100_chars:
+        return "graphml"
+
+    raise NotImplementedError("Cannot infer graph file type from contents.")
+
+
 def detect_and_load_graph(graph_uri: str) -> nx.Graph:
-    # Detect type of graph
+    """
+    Read a graph from its URI and return a NetworkX.Graph-compatible API.
+
+    Note that this API may be a true NetworkX.Graph, or it may be a Grand
+    Graph, which proxies networkx library functions to other graph stores.
+
+    """
+
+    if graph_uri.startswith("http://") or graph_uri.startswith("https://"):
+        # Download to a temp file:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.write(requests.get(graph_uri).content)
+            f.flush()
+            graph_uri = f.name
+
+    # Detect type of graph file:
     graph_path = str(pathlib.Path(graph_uri).absolute().resolve())
+    graph_type = None
     if graph_path.endswith(".gml") or graph_path.endswith(".gml.gz"):
-        host_graph = nx.read_gml(graph_path)  # type: ignore
+        graph_type = "gml"
     elif graph_path.endswith(".graphml") or graph_path.endswith(".graphml.gz"):
-        host_graph = nx.read_graphml(graph_path)  # type: ignore
+        graph_type = "graphml"
     elif graph_path.endswith(".gpickle"):
-        host_graph = nx.read_gpickle(graph_path)  # type: ignore
-    else:
+        graph_type = "gpickle"
+
+    if graph_type is None:
+        graph_type = _infer_graph_filetype_from_contents(graph_path)
+
+    readers = {
+        "gml": nx.read_gml,  # type: ignore
+        "graphml": nx.read_graphml,  # type: ignore
+    }
+    if graph_type not in readers:
         raise ValueError(f"Unknown graph file type for file '{graph_path}'.")
+
+    host_graph = readers[graph_type](graph_path)
     return host_graph
 
 
@@ -68,9 +107,15 @@ def cli():
     )
     # Optional query parameter. If not provided, enters an interactive loop.
     argparser.add_argument(
-        "-c",
+        "-qc",
         "--cypher",
         help="A Cypher query to run.",
+        default=None,
+    )
+    argparser.add_argument(
+        "-qd",
+        "--dotmotif",
+        help="A dotmotif query to run.",
         default=None,
     )
 
