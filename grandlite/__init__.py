@@ -62,12 +62,12 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
     return host_graph
 
 
-def prompt_loop_on_graph(host_graph: nx.Graph):
+def prompt_loop_on_graph(host_graph: nx.Graph, query_language: str = "cypher"):
     exiting = False
     last_results = None
     while not exiting:
         try:
-            text = prompt("> ")
+            text = prompt(f"{query_language}> ")
         except KeyboardInterrupt:
             continue
         except EOFError:
