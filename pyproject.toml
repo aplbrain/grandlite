@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "grandlite"
+version = "0.1.0"
+description = "A command-line tool for querying graphs using common query languages."
+authors = ["Jordan Matelsky <opensource@matelsky.com>"]
+license = "Apache 2.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+grand-graph = "^0.4.2"
+grand-cypher = "^0.3.0"
+prompt-toolkit = "^3.0.38"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.267"
+black = "^23.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# Run grandlite from the command line:
+[tool.poetry.scripts]
+grandlite = "grandlite:prompt_loop"
