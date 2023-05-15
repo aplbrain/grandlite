@@ -31,3 +31,29 @@ $ grandlite my-graph.graphml
 
 > exit()
 ```
+
+## Command-line options
+
+```bash
+$ grandlite --help
+usage: An interactive graph query tool for Cypher and other query languages.
+       [-h] [-o {csv,json,jsonl}] [-c CYPHER] graph
+
+positional arguments:
+  graph                 The filename of the graph to load.
+
+options:
+  -h, --help            show this help message and exit
+  -o {csv,json,jsonl}, --output {csv,json,jsonl}
+                        The output format to use.
+  -c CYPHER, --cypher CYPHER
+                        A Cypher query to run.
+```
+
+## Examples
+
+#### Non-interactively query a GraphML file and output the results as JSON
+
+```bash
+grandlite my-graph.graphml -c 'match (a)-[]->(b) where a.type <> 1 return a,b limit 10' --json
+```
