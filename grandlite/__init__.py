@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import pathlib
 import sys
 import tempfile
@@ -63,6 +64,7 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
 
 def prompt_loop_on_graph(host_graph: nx.Graph):
     exiting = False
+    last_results = None
     while not exiting:
         try:
             text = prompt("> ")
@@ -82,10 +84,37 @@ def prompt_loop_on_graph(host_graph: nx.Graph):
             exiting = True
             continue
 
+        if text.lower().startswith("save"):
+            if last_results is None:
+                print("No results to save.")
+                continue
+            args = text.split(" ")[1:]
+            if len(args) > 0:
+                format = args[0].split(".")[-1]
+                filename = args[0]
+            else:
+                format = "json"
+                iso = datetime.datetime.now().isoformat()
+                filename = f"results-{iso}.{format}"
+
+            if format == "csv":
+                last_results.to_csv(filename)
+            elif format == "jsonl":
+                last_results.to_json(filename, orient="records", lines=True)
+            elif format == "json":
+                last_results.to_json(filename, orient="records")
+
+            continue
+
         # Parse the query using the GrandCypher parser
-        results = GrandCypher(host_graph).run(text)
-        # Print the results
-        print(pd.DataFrame(results))
+        try:
+            results = pd.DataFrame(GrandCypher(host_graph).run(text))
+            last_results = results
+            # Print the results
+            print(results)
+        except Exception as e:
+            print(f"Error: {e}")
+            continue
 
 
 def cli():

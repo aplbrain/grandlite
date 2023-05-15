@@ -29,8 +29,12 @@ $ grandlite my-graph.graphml
 8  023620  419409
 9  023620  482511
 
+> save results.json
+
 > exit()
 ```
+
+Note that `save [filename]` will output `csv`, `json`, and `jsonl` files, depending on the extension provided; or will default to `results-XXXX.json` with XXX as a timestamp in ISO format, if no filename is provided.
 
 ## Command-line options
 
