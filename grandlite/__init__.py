@@ -7,13 +7,29 @@ from typing import Any, Protocol
 
 import networkx as nx
 import pandas as pd
-from dotmotif import GrandIsoExecutor, Motif
 import requests
+from dotmotif import GrandIsoExecutor, Motif
 from grandcypher import GrandCypher
-from prompt_toolkit import PromptSession, print_formatted_text, HTML
+from prompt_toolkit import HTML, PromptSession, print_formatted_text
 
 
-def _infer_graph_filetype_from_contents(filename):
+# If XML, assume GraphML
+
+
+def _infer_graph_filetype_from_contents(filename: str) -> str:
+    """
+    Infer the graph file type from the contents of the file.
+
+    Arguments:
+        filename: The name of the graph file.
+
+    Returns:
+        The file type, as a string.
+
+    Raises:
+        NotImplementedError: If the file type cannot be inferred.
+
+    """
     # If XML, assume GraphML
     first_100_chars = open(filename).read(100)
     if "<graphml" in first_100_chars:
@@ -28,6 +44,15 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
 
     Note that this API may be a true NetworkX.Graph, or it may be a Grand
     Graph, which proxies networkx library functions to other graph stores.
+
+    Arguments:
+        graph_uri: The URI of the graph.
+
+    Returns:
+        A NetworkX.Graph-compatible API.
+
+    Raises:
+        ValueError: If the graph file type is unknown.
 
     """
 
@@ -62,32 +87,71 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
     return host_graph
 
 
+# Output and error types for the prompt:
 _Output = _Error = str | None
+# The response type for the prompt (railroad-style tuple)
 Response = tuple[_Output, _Error]
 
 
 class StatefulPrompt(Protocol):
+    """
+    A protocol that defines the interface for a stateful prompt.
+    """
+
     def _get_state(self, graph_pointer: nx.Graph):
+        """
+        Retrieve the state associated with a graph pointer.
+        """
         ...
 
     def _set_state(self, state):
+        """
+        Set the state associated with a graph pointer.
+        """
         ...
 
     def prompt_text(self):
+        """
+        Return the prompt text.
+        """
         ...
 
     def query(self, input_text: str) -> Any:
+        """
+        Perform a single query using the given input.
+        """
         ...
 
     def submit_input(self, input_text: str) -> Response:
+        """
+        Submit the given input to the prompt.
+        """
         ...
 
     def prompt_kwargs(self) -> dict:
-        return {}
+        """
+        Return any keyword arguments that should be passed to the prompt.
+        """
+        ...
 
 
 class GrandCypherStatefulPrompt(StatefulPrompt):
+    """
+    A stateful prompt that uses Grand Cypher to query a graph using the Cypher
+    query language.
+
+    https://neo4j.com/docs/cypher-manual/current/
+
+    """
+
     def __init__(self, graph_pointer: nx.Graph):
+        """
+        Initialize the prompt with a graph pointer.
+
+        Arguments:
+            graph_pointer: A NetworkX graph pointer.
+
+        """
         self._graph = graph_pointer
         self._last_results = None
 
@@ -147,6 +211,15 @@ class GrandCypherStatefulPrompt(StatefulPrompt):
 
 
 class DotMotifStatefulPrompt(StatefulPrompt):
+    """
+    A stateful prompt that uses grandiso to query a graph using the DotMotif
+    query language.
+
+    https://github.com/aplbrain/dotmotif
+    https://github.com/aplbrain/grandiso-networkx
+
+    """
+
     def __init__(self, graph_pointer: nx.Graph):
         self._graph = graph_pointer
         self._last_results = None
@@ -210,6 +283,7 @@ class DotMotifStatefulPrompt(StatefulPrompt):
         return self._last_results.to_markdown(), None
 
 
+# A mapping of query languages to their respective stateful prompts.
 _ALL_PROMPTS = {
     "cypher": GrandCypherStatefulPrompt,
     "dotmotif": DotMotifStatefulPrompt,
@@ -217,6 +291,16 @@ _ALL_PROMPTS = {
 
 
 def prompt_loop_on_graph(host_graph: nx.Graph, query_language: str = "cypher"):
+    """
+    A prompt loop that allows the user to query a graph using a query language
+    of their choice.
+
+    Arguments:
+        host_graph: The graph to query.
+        query_language: The query language to use. Currently supported are
+            'cypher' and 'dotmotif'.
+
+    """
     session = PromptSession(
         enable_history_search=True,
     )
@@ -261,6 +345,10 @@ def prompt_loop_on_graph(host_graph: nx.Graph, query_language: str = "cypher"):
 
 
 def cli():
+    """
+    The command-line interface for the tool.
+
+    """
     argparser = argparse.ArgumentParser(
         "An interactive graph query tool for Cypher and other query languages.",
     )
