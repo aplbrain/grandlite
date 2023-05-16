@@ -8,7 +8,7 @@ import networkx as nx
 import pandas as pd
 import requests
 from grandcypher import GrandCypher
-from prompt_toolkit import prompt
+from prompt_toolkit import PromptSession, print_formatted_text, HTML
 
 
 def _infer_graph_filetype_from_contents(filename):
@@ -62,12 +62,93 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
     return host_graph
 
 
+_Output = _Error = str | None
+Response = tuple[_Output, _Error]
+
+
+class StatefulPrompt:
+    def _get_state(self, graph_pointer: nx.Graph):
+        raise NotImplementedError()
+
+    def _set_state(self, state):
+        raise NotImplementedError()
+
+    def prompt_text(self):
+        raise NotImplementedError()
+
+    def submit_input(self, input_text: str) -> Response:
+        raise NotImplementedError()
+
+
+class GrandCypherStatefulPrompt(StatefulPrompt):
+    def __init__(self, graph_pointer: nx.Graph):
+        self._graph = graph_pointer
+        self._last_results = None
+
+    def _get_state(self):
+        return {
+            "last_results": self._last_results,
+        }
+
+    def _set_state(self, state):
+        self._last_results = state.pop("last_results", None)
+        if len(state) > 0:
+            raise ValueError(f"Unknown state keys: {list(state.keys())}")
+
+    def prompt_text(self):
+        return "cypher> "
+
+    def submit_input(self, input_text: str) -> Response:
+        if input_text.lower().startswith("save"):
+            if self._last_results is None:
+                return None, "No results to save."
+            args = input_text.split(" ")[1:]
+            if len(args) > 0:
+                format = args[0].split(".")[-1]
+                filename = args[0]
+            else:
+                format = "json"
+                iso = datetime.datetime.now().isoformat()
+                filename = f"results-{iso}.{format}"
+
+            if format == "csv":
+                self._last_results.to_csv(filename)
+            elif format == "jsonl":
+                self._last_results.to_json(filename, orient="records", lines=True)
+            elif format == "json":
+                self._last_results.to_json(filename, orient="records")
+            elif format in ["md", "markdown"]:
+                self._last_results.to_markdown(filename)
+            elif format == "html":
+                self._last_results.to_html(filename)
+            else:
+                return None, f"Unknown format: {format}"
+            return f"Saved results to {filename}.", None
+
+        try:
+            results = GrandCypher(self._graph).run(input_text)
+            self._last_results = pd.DataFrame(results)
+        except Exception as e:
+            return None, str(e)
+        return self._last_results.to_markdown(), None
+
+
 def prompt_loop_on_graph(host_graph: nx.Graph, query_language: str = "cypher"):
+    session = PromptSession(
+        enable_history_search=True,
+    )
+    _prompts = {
+        "cypher": GrandCypherStatefulPrompt,
+    }
+    if query_language not in _prompts:
+        raise ValueError(f"No known query parser for language '{query_language}'.")
+
+    stateful_prompt = _prompts[query_language](host_graph)
+
     exiting = False
-    last_results = None
     while not exiting:
         try:
-            text = prompt(f"{query_language}> ")
+            text = session.prompt(stateful_prompt.prompt_text())
         except KeyboardInterrupt:
             continue
         except EOFError:
@@ -84,37 +165,16 @@ def prompt_loop_on_graph(host_graph: nx.Graph, query_language: str = "cypher"):
             exiting = True
             continue
 
-        if text.lower().startswith("save"):
-            if last_results is None:
-                print("No results to save.")
-                continue
-            args = text.split(" ")[1:]
-            if len(args) > 0:
-                format = args[0].split(".")[-1]
-                filename = args[0]
-            else:
-                format = "json"
-                iso = datetime.datetime.now().isoformat()
-                filename = f"results-{iso}.{format}"
-
-            if format == "csv":
-                last_results.to_csv(filename)
-            elif format == "jsonl":
-                last_results.to_json(filename, orient="records", lines=True)
-            elif format == "json":
-                last_results.to_json(filename, orient="records")
-
+        output, error = stateful_prompt.submit_input(text)
+        if error is not None:
+            print_formatted_text(
+                HTML(f"<ansired>{error}</ansired>"),
+            )
             continue
-
-        # Parse the query using the GrandCypher parser
-        try:
-            results = pd.DataFrame(GrandCypher(host_graph).run(text))
-            last_results = results
-            # Print the results
-            print(results)
-        except Exception as e:
-            print(f"Error: {e}")
-            continue
+        if output is not None:
+            print_formatted_text(
+                HTML(f"<ansigreen>{output}</ansigreen>"),
+            )
 
 
 def cli():

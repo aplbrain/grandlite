@@ -12,6 +12,7 @@ grand-graph = "^0.4.2"
 grand-cypher = "^0.3.0"
 prompt-toolkit = "^3.0.38"
 requests = "^2.30.0"
+tabulate = "^0.9.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.0.267"
