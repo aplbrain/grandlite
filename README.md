@@ -38,10 +38,12 @@ Note that `save [filename]` will output `csv`, `json`, and `jsonl` files, depend
 
 ## Command-line options
 
-```bash
+```
 $ grandlite --help
 usage: An interactive graph query tool for Cypher and other query languages.
-       [-h] [-o {csv,json,jsonl}] [-c CYPHER] graph
+       [-h] [-o {csv,json,jsonl}] [--query QUERY]
+       [-l {cypher,dotmotif}]
+       graph
 
 positional arguments:
   graph                 The filename of the graph to load.
@@ -50,8 +52,9 @@ options:
   -h, --help            show this help message and exit
   -o {csv,json,jsonl}, --output {csv,json,jsonl}
                         The output format to use.
-  -c CYPHER, --cypher CYPHER
-                        A Cypher query to run.
+  --query QUERY         If not provided, enters an interactive prompt.
+  -l {cypher,dotmotif}, --language {cypher,dotmotif}
+                        The query language to use (default: cypher).
 ```
 
 ## Examples
@@ -59,7 +62,7 @@ options:
 #### Non-interactively query a GraphML file and output the results as JSON
 
 ```bash
-$ grandlite my-graph.graphml -c 'match (a)-[]->(b) where a.type <> 1 return a,b limit 10' --json
+$ grandlite my-graph.graphml --query 'match (a)-[]->(b) where a.type <> 1 return a,b limit 10' -o json
 ```
 
 #### Interactively query a graph file downloaded from the internet, automatically inferring the file format
@@ -80,6 +83,34 @@ $ grandlite https://raw.githubusercontent.com/melaniewalsh/sample-social-network
 93    Silvanus Bevan    10.0
 94    John Penington    10.0
 95      Lewis Morris    10.0
+```
+
+#### Interactively query a graph file downloaded from the internet with DotMotif
+
+```
+$ grandlite https://raw.githubusercontent.com/chengw07/NetWalk/master/data/karate.GraphML --language dotmotif
+
+dotmotif> A -> B [weight>1]
+          A.Faction != B.Faction
+
+|    | A   | B   |
+|---:|:----|:----|
+|  0 | n0  | n8  |
+|  1 | n0  | n31 |
+|  2 | n1  | n30 |
+|  3 | n2  | n8  |
+|  4 | n2  | n27 |
+|  5 | n2  | n28 |
+|  6 | n2  | n32 |
+|  7 | n8  | n0  |
+|  8 | n8  | n2  |
+|  9 | n13 | n33 |
+| 10 | n27 | n2  |
+| 11 | n28 | n2  |
+| 12 | n30 | n1  |
+| 13 | n31 | n0  |
+| 14 | n32 | n2  |
+| 15 | n33 | n13 |
 ```
 
 ---

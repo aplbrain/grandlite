@@ -186,6 +186,28 @@ files = [
 ]
 
 [[package]]
+name = "dotmotif"
+version = "0.13.0"
+description = "Find graph motifs using simple, intuitive notation"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "dotmotif-0.13.0.tar.gz", hash = "sha256:4ecdba30796c0d9159a81a6741868dcdbee768dcf13cc98c1f7902bc54cef946"},
+]
+
+[package.dependencies]
+grandiso = ">=2.0.0"
+lark-parser = "*"
+networkx = ">2.4"
+numpy = "*"
+pandas = "*"
+
+[package.extras]
+neo4j = ["docker", "py2neo", "tamarind (>=0.1.5)"]
+neuprint = ["neuprint-python"]
+
+[[package]]
 name = "grand-cypher"
 version = "0.3.0"
 description = "Query Grand graphs using Cypher"
@@ -615,4 +637,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "21591a81d9ee4a9560666005d367237ef800462e9bcb4de52e5c4b34054c508f"
+content-hash = "5a8598937d145e838ab38a05454f3a4a13292ec0fd547aff12605fcf1e966938"
