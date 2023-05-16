@@ -113,6 +113,14 @@ dotmotif> A -> B [weight>1]
 | 15 | n33 | n13 |
 ```
 
+#### Advanced Examples
+
+> ##### Search motifs with DotMotif with a query argument, and post-process results with `jq`
+>
+> ```bash
+> grandlite https://raw.githubusercontent.com/chengw07/NetWalk/master/data/karate.GraphML --language dotmotif -o jsonl --query 'A->B [weight>5]' | jq '.A'
+> ```
+
 ---
 
 <p align='center'><small>Made with 💙 at <a href='http://www.jhuapl.edu/'><img alt='JHU APL' align='center' src='https://user-images.githubusercontent.com/693511/62956859-a967ca00-bdc1-11e9-998e-3888e8a24e86.png' height='42px'></a></small></p>
