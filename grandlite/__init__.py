@@ -31,7 +31,7 @@ def _infer_graph_filetype_from_contents(filename: str) -> str:
 
     """
     # If XML, assume GraphML
-    first_100_chars = open(filename).read(100)
+    first_100_chars = open(filename).read(500)
     if "<graphml" in first_100_chars:
         return "graphml"
 
@@ -368,7 +368,7 @@ def cli():
     # Optional query parameter. If not provided, enters an interactive loop.
     argparser.add_argument(
         "--query",
-        help="The query to run (optional). If not provided, enters an interactive prompt.",
+        help="If not provided, enters an interactive prompt.",
         default=None,
     )
     argparser.add_argument(
