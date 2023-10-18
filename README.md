@@ -12,7 +12,7 @@ $ pip install grandlite
 
 ## Usage
 
-```bash
+```
 $ grandlite my-graph.graphml
 >
 > match (a)-[]->(b) return a,b limit 10
@@ -124,3 +124,9 @@ dotmotif> A -> B [weight>1]
 ---
 
 <p align='center'><small>Made with 💙 at <a href='http://www.jhuapl.edu/'><img alt='JHU APL' align='center' src='https://user-images.githubusercontent.com/693511/62956859-a967ca00-bdc1-11e9-998e-3888e8a24e86.png' height='42px'></a></small></p>
+
+---
+
+```
+grandlite 'vertex:vertices.csv;edge:edges.csv'
+```
