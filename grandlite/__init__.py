@@ -1,13 +1,17 @@
 import argparse
 import pathlib
 import sys
+import re
 import tempfile
 
 import networkx as nx
 import requests
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
+from grand_cypher_io import opencypher_buffers_to_graph
 
 from .prompts import ALL_PROMPTS, StatefulPrompt
+
+_opencypher_graphpath_regex = re.compile(r"vertex:(.*);edge:(.*)")
 
 
 def _infer_graph_filetype_from_contents(filename: str) -> str:
@@ -24,12 +28,38 @@ def _infer_graph_filetype_from_contents(filename: str) -> str:
         NotImplementedError: If the file type cannot be inferred.
 
     """
-    # If XML, assume GraphML
-    first_100_chars = open(filename).read(500)
-    if "<graphml" in first_100_chars:
-        return "graphml"
+    # Make sure the file exists:
+    if pathlib.Path(filename).exists():
+        # If XML, assume GraphML
+        first_chars = open(filename).read(500)
+        if "<graphml" in first_chars:
+            return "graphml"
+
+    # See if this is an OpenCypher collection of the form
+    # `vertex:file,file,file;edge:file,file,file`:
+    # Where `vertex` and `edge` are hardcoded, and `file` is a path to a file.
+    # The files are assumed to be CSVs.
+    match = _opencypher_graphpath_regex.match(filename)
+    if match is not None:
+        return "opencypher"
 
     raise NotImplementedError("Cannot infer graph file type from contents.")
+
+
+def read_opencypher(paths: str) -> nx.Graph:
+    """Read a graph from an OpenCypher CSV set of files.
+
+    Arguments:
+        path (str): A path of the form `_opencypher_graphpath_regex`.
+
+    """
+    parsed = _opencypher_graphpath_regex.match(paths)
+    if parsed is None:
+        raise ValueError("Invalid OpenCypher graph path.")
+    # Parse the paths:
+    vertex_paths = parsed.group(1).split(",")
+    edge_paths = parsed.group(2).split(",")
+    return opencypher_buffers_to_graph(vertex_paths, edge_paths)
 
 
 def detect_and_load_graph(graph_uri: str) -> nx.Graph:
@@ -58,7 +88,10 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
             graph_uri = f.name
 
     # Detect type of graph file:
-    graph_path = str(pathlib.Path(graph_uri).absolute().resolve())
+    # if pathlib.Path(graph_uri).exists():
+    #     graph_path = str(pathlib.Path(graph_uri).absolute().resolve())
+    # else:
+    graph_path = graph_uri
     graph_type = None
     if graph_path.endswith(".gml") or graph_path.endswith(".gml.gz"):
         graph_type = "gml"
@@ -73,6 +106,7 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
     readers = {
         "gml": nx.read_gml,  # type: ignore
         "graphml": nx.read_graphml,  # type: ignore
+        "opencypher": read_opencypher,  # type: ignore
     }
     if graph_type not in readers:
         raise ValueError(f"Unknown graph file type for file '{graph_path}'.")
