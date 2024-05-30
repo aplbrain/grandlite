@@ -14,6 +14,12 @@ from .prompts import ALL_PROMPTS, StatefulPrompt
 
 _opencypher_graphpath_regex = re.compile(r"vertex:(.*);edge:(.*)")
 
+results_formatter = {
+    "csv": lambda x: x.to_csv(sys.stdout),
+    "json": lambda x: x.to_json(sys.stdout, orient="records"),
+    "jsonl": lambda x: x.to_json(sys.stdout, orient="records", lines=True),
+}
+
 def _guess_delimiter(first_n_lines: list[str]) -> str:
     """
     Guess the delimiter of a CSV file from the first few lines.
@@ -65,7 +71,6 @@ def read_headered_edgelist(filename: str) -> nx.Graph:
         delimiter = _guess_delimiter([next(f) for _ in range(5)])
     with open(filepath, "r") as f:
         reader = csv.DictReader(f, delimiter=delimiter)
-        print(reader.fieldnames)
         edges = [(row[src_col], row[tgt_col], _without_srctgt(row)) for row in reader]
     return nx.DiGraph(edges)
 
@@ -271,10 +276,44 @@ def cli():
         choices=["cypher", "dotmotif"],
         default=None,
     )
+    argparser.add_argument(
+        "--stats",
+        action="store_true",
+        help="Print statistics about the graph and exit.",
+    )
 
     args = argparser.parse_args()
     host_graph = detect_and_load_graph(args.graph)
     language = args.language or "cypher"
+
+    if args.stats:
+        degrees = dict(host_graph.degree())
+        results = {
+            "Nodes": host_graph.number_of_nodes(),
+            "Edges": host_graph.number_of_edges(),
+            "Density": nx.density(host_graph),
+            "Orphans": len([n for n in host_graph.nodes if host_graph.degree(n) == 0]),
+            "Leaves": len([n for n in host_graph.nodes if host_graph.degree(n) == 1]),
+            "Max degree": max(degrees.values()),
+            "Max node": max(degrees, key=degrees.get),
+            "Self-loops": nx.number_strongly_connected_components(host_graph),
+        }
+
+        if args.output is None:
+            for k, v in results.items():
+                print(f"{k}: {v}")
+        elif args.output in ["json", "jsonl"]:
+            # Write valid JSON to stdout
+            import json
+            json.dump(results, sys.stdout)
+        else:
+            writer = csv.DictWriter(sys.stdout, fieldnames=results.keys())
+            writer.writeheader()
+            writer.writerow(results)
+
+
+
+        sys.exit(0)
 
     if args.query is not None:
         try:
@@ -282,11 +321,7 @@ def cli():
         except Exception as e:
             print(e)
             sys.exit(1)
-        results_formatter = {
-            "csv": lambda x: x.to_csv(sys.stdout),
-            "json": lambda x: x.to_json(sys.stdout, orient="records"),
-            "jsonl": lambda x: x.to_json(sys.stdout, orient="records", lines=True),
-        }
+
         if args.output is None:
             print(results)
         else:

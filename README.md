@@ -12,9 +12,30 @@ $ pip install grandlite
 
 ## Usage
 
+### Get stats about a graph
+
+```bash
+$ poetry run grandlite --stats 'h-edgelist(pre:post)://white_1986_n2u.csv'
 ```
+
+```
+Nodes: 221
+Edges: 1855
+Density: 0.038153023447141096
+Orphans: 0
+Leaves: 7
+Max degree: 44
+Max node: RIMR
+Self-loops: 52
+```
+
+### Run an interactive Cypher session
+
+```bash
 $ grandlite my-graph.graphml
->
+```
+
+```cypher
 > match (a)-[]->(b) return a,b limit 10
 
         a       b
@@ -41,8 +62,11 @@ Note that `save [filename]` will output `csv`, `json`, and `jsonl` files, depend
 ```
 $ grandlite --help
 usage: An interactive graph query tool for Cypher and other query languages.
-       [-h] [-o {csv,json,jsonl}] [--query QUERY]
+       [-h]
+       [-o {csv,json,jsonl}]
+       [-q QUERY]
        [-l {cypher,dotmotif}]
+       [--stats]
        graph
 
 positional arguments:
@@ -52,9 +76,11 @@ options:
   -h, --help            show this help message and exit
   -o {csv,json,jsonl}, --output {csv,json,jsonl}
                         The output format to use.
-  --query QUERY         If not provided, enters an interactive prompt.
+  -q QUERY, --query QUERY
+                        If not provided, enters an interactive prompt.
   -l {cypher,dotmotif}, --language {cypher,dotmotif}
                         The query language to use (default: cypher).
+  --stats               Print statistics about the graph and exit.
 ```
 
 ## Examples
@@ -121,12 +147,16 @@ dotmotif> A -> B [weight>1]
 > grandlite https://raw.githubusercontent.com/chengw07/NetWalk/master/data/karate.GraphML --language dotmotif -o jsonl --query 'A->B [weight>5]' | jq '.A'
 > ```
 
+```
+grandlite 'vertex:vertices.csv;edge:edges.csv'
+```
+
+```
+grandlite 'h-edgelist(pre:post)://white_1986_n2u.csv'
+```
+
 ---
 
 <p align='center'><small>Made with 💙 at <a href='http://www.jhuapl.edu/'><img alt='JHU APL' align='center' src='https://user-images.githubusercontent.com/693511/62956859-a967ca00-bdc1-11e9-998e-3888e8a24e86.png' height='42px'></a></small></p>
 
 ---
-
-```
-grandlite 'vertex:vertices.csv;edge:edges.csv'
-```
