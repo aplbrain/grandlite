@@ -1,4 +1,5 @@
 import argparse
+import csv
 import pathlib
 import sys
 import re
@@ -12,6 +13,61 @@ from grand_cypher_io import opencypher_buffers_to_graph
 from .prompts import ALL_PROMPTS, StatefulPrompt
 
 _opencypher_graphpath_regex = re.compile(r"vertex:(.*);edge:(.*)")
+
+def _guess_delimiter(first_n_lines: list[str]) -> str:
+    """
+    Guess the delimiter of a CSV file from the first few lines.
+
+    Arguments:
+        first_n_lines: The first few lines of the CSV file.
+
+    Returns:
+        The guessed delimiter.
+
+    """
+    delimiters = [",", "\t", ";", "|"]
+    # Return the first delimiter that appears in the first few lines and has
+    # the same number of occurrences in each line.
+    for delimiter in delimiters:
+        # Appears at all?
+        if not any(delimiter in line for line in first_n_lines):
+            continue
+        if all(line.count(delimiter) == first_n_lines[0].count(delimiter) for line in first_n_lines):
+            return delimiter
+    raise ValueError("Could not guess delimiter.")
+
+def read_headered_edgelist(filename: str) -> nx.Graph:
+    """
+    Read a graph from a headered edgelist file.
+
+    Arguments:
+        filename: The name of the file to read.
+
+    Returns:
+        A NetworkX graph.
+
+    """
+    # The filename is of the form `h-edgelist(src:tgt)://{filename}`, so we
+    # need to extract the the src column and tgt column from the filename,
+    # and then read the file.
+    match = re.match(r"h-edgelist\((.*):(.*)\)://(.*)", filename)
+    if match is None:
+        raise ValueError("Invalid headered edgelist file path.")
+    src_col = match.group(1)
+    tgt_col = match.group(2)
+    filepath = match.group(3)
+    # The file has a header row.
+    # Use the CSV reader to read the file:
+    def _without_srctgt(row):
+        return {k: v for k, v in row.items() if k not in [src_col, tgt_col]}
+
+    with open(filepath, "r") as f:
+        delimiter = _guess_delimiter([next(f) for _ in range(5)])
+    with open(filepath, "r") as f:
+        reader = csv.DictReader(f, delimiter=delimiter)
+        print(reader.fieldnames)
+        edges = [(row[src_col], row[tgt_col], _without_srctgt(row)) for row in reader]
+    return nx.DiGraph(edges)
 
 
 def _infer_graph_filetype_from_contents(filename: str) -> str:
@@ -35,6 +91,10 @@ def _infer_graph_filetype_from_contents(filename: str) -> str:
         if "<graphml" in first_chars:
             return "graphml"
 
+        # If CSV, see if it's an edgelist:
+        if "source,target" in first_chars:
+            return "edgelist"
+
     # See if this is an OpenCypher collection of the form
     # `vertex:file,file,file;edge:file,file,file`:
     # Where `vertex` and `edge` are hardcoded, and `file` is a path to a file.
@@ -42,6 +102,7 @@ def _infer_graph_filetype_from_contents(filename: str) -> str:
     match = _opencypher_graphpath_regex.match(filename)
     if match is not None:
         return "opencypher"
+
 
     raise NotImplementedError("Cannot infer graph file type from contents.")
 
@@ -99,6 +160,10 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
         graph_type = "graphml"
     elif graph_path.endswith(".gpickle"):
         graph_type = "gpickle"
+    elif graph_path.startswith("edgelist://"):
+        graph_type = "edgelist"
+    elif graph_path.startswith("h-edgelist("):
+        graph_type = "edgelist-with-headers"
 
     if graph_type is None:
         graph_type = _infer_graph_filetype_from_contents(graph_path)
@@ -107,6 +172,8 @@ def detect_and_load_graph(graph_uri: str) -> nx.Graph:
         "gml": nx.read_gml,  # type: ignore
         "graphml": nx.read_graphml,  # type: ignore
         "opencypher": read_opencypher,  # type: ignore
+        "edgelist": nx.read_edgelist,  # type: ignore
+        "edgelist-with-headers": read_headered_edgelist,  # type: ignore
     }
     if graph_type not in readers:
         raise ValueError(f"Unknown graph file type for file '{graph_path}'.")
