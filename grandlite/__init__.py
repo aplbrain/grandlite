@@ -269,6 +269,7 @@ def cli():
         help="If not provided, enters an interactive prompt.",
         default=None,
     )
+    # Which language to use for queries.
     argparser.add_argument(
         "-l",
         "--language",
@@ -276,10 +277,16 @@ def cli():
         choices=["cypher", "dotmotif"],
         default=None,
     )
+    # Print statistics about the graph and exit.
     argparser.add_argument(
         "--stats",
         action="store_true",
         help="Print statistics about the graph and exit.",
+    )
+    # Convert the graph to a different format and write it to a file.
+    argparser.add_argument(
+        "--convert",
+        help="Convert the graph to a different format and write it to a file.",
     )
 
     args = argparser.parse_args()
@@ -310,9 +317,19 @@ def cli():
             writer = csv.DictWriter(sys.stdout, fieldnames=results.keys())
             writer.writeheader()
             writer.writerow(results)
+        sys.exit(0)
 
-
-
+    if args.convert is not None:
+        if args.convert.endswith(".gml"):
+            nx.write_gml(host_graph, args.convert)
+        elif args.convert.endswith(".graphml"):
+            nx.write_graphml(host_graph, args.convert)
+        elif args.convert.endswith(".gpickle"):
+            nx.write_gpickle(host_graph, args.convert)
+        elif args.convert.endswith(".edgelist"):
+            nx.write_edgelist(host_graph, args.convert)
+        else:
+            raise ValueError("Unknown output format.")
         sys.exit(0)
 
     if args.query is not None:
