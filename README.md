@@ -84,7 +84,7 @@ options:
 
 ## Input formats
 
-Grandlite supports a growing variety of input formats. For a complete list, see [the docs](./docs/Input-Formats).
+Grandlite supports a growing variety of input formats. For a complete list, see [the docs](./docs/Input-Formats.d).
 
 ### Examples
 
