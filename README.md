@@ -50,7 +50,7 @@ $ grandlite my-graph.graphml
 
 Note that `save [filename]` will output `csv`, `json`, and `jsonl` files, depending on the extension provided; or will default to `results-XXXX.json` with XXX as a timestamp in ISO format, if no filename is provided.
 
-For more information about saving, see [the docs](./docs/Saving).
+For more information about saving, see [the docs](./docs/Saving.md).
 
 ## Command-line options
 
